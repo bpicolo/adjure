@@ -47,6 +47,7 @@ def user_authenticate():
 @auth_page.route('/user/qrcode', methods=['GET'])
 def user_qrcode():
     auth_uri = auth.user_auth_uri(
+        issuer=request.args['issuer'],
         username=request.args['username'],
         user_id=request.args['user_id'],
     )

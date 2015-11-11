@@ -31,7 +31,7 @@ def load_user(user_id):
     return session.query(AuthUser).filter(AuthUser.user_id == user_id).first()
 
 
-def provision_user(user_id, key_length=None):
+def provision_user(user_id, key_length=None, key_valid_duration=None):
     """Provision a totp user for the given user_id
     :param user_id: int
     :param key_length: int in SUPPORTED_KEY_LENGTHS
@@ -39,6 +39,8 @@ def provision_user(user_id, key_length=None):
     config = staticconf.NamespaceReaders('adjure')
     if key_length is None:
         key_length = config.read('auth.key_length', default=6)
+    if key_valid_duration is None:
+        key_valid_duration = config.read('auth.key_valid_duration', default=30)
 
     if key_length not in SUPPORTED_KEY_LENGTHS:
         raise UserCreationException('{} is not a valid key_length. Must be one of {}'.format(
@@ -48,8 +50,12 @@ def provision_user(user_id, key_length=None):
     if load_user(user_id):
         raise UserCreationException('User id {} already provisioned.'.format(user_id))
 
-    secret = os.urandom(SECRET_KEY_BYTES)
-    auth_user = AuthUser(user_id=user_id, secret=secret, key_length=key_length)
+    auth_user = AuthUser(
+        user_id=user_id,
+        secret=os.urandom(SECRET_KEY_BYTES),
+        key_length=key_length,
+        key_valid_duration=key_valid_duration
+    )
 
     session.add(auth_user)
     session.commit()
@@ -63,7 +69,6 @@ def authorize_user(user_id, value):
     :param value: ASCII encoded bytes
     """
     config = staticconf.NamespaceReaders('adjure')
-    key_valid_duration = config.read_int('key_valid_duration', default=30)
     sliding_windows = config.read_int('sliding_windows', default=1)
     user = load_user(user_id)
 
@@ -75,7 +80,7 @@ def authorize_user(user_id, value):
         user.key_length,
         value,
         math.floor(time.time()),
-        key_valid_duration,
+        user.key_valid_duration,
         sliding_windows,
     )
 
@@ -123,21 +128,18 @@ def sliding_time_window(current_time, key_valid_duration, sliding_windows):
     )
 
 
-def user_auth_uri(username, user_id):
+def user_auth_uri(user_id, username, issuer):
     """
     :param username: The username that should show up on the user's auth app
     """
-    issuer = 'blah'
-    config = staticconf.NamespaceReaders('adjure')
     user = load_user(user_id)
-
     if not user:
         return None
 
     totp = get_totp(
         user.secret,
         user.key_length,
-        config.read_int('key_valid_duration', default=30),
+        user.key_valid_duration,
     )
 
     return totp.get_provisioning_uri(username, issuer)

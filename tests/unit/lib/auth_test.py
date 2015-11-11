@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
+from base64 import b32encode
 import os
 import time
+from urllib.parse import parse_qs
+from urllib.parse import urlparse
 
 import pytest
 
@@ -101,3 +104,23 @@ def test_totp_verify_60_window():
         auth.totp_verify(secret, key_length, b'999999', current_time, 60, 0)
     with pytest.raises(auth.ValidationException):
         auth.totp_verify(secret, key_length, value, current_time, 30, 0)
+
+
+def test_auth_uri():
+    user_id = 15
+    user = auth.provision_user(user_id)
+
+    auth_uri = urlparse(
+        auth.user_auth_uri(user_id, 'ausername@example.org', 'someissuer'),
+    )
+
+    assert auth_uri.scheme == 'otpauth'
+    assert auth_uri.netloc == 'totp'
+    assert auth_uri.path == '/someissuer:ausername%40example.org'
+
+    query = parse_qs(auth_uri.query)
+    assert query['algorithm'] == ['SHA1']
+    assert query['period'] == [str(user.key_valid_duration)]
+    assert query['issuer'] == ['someissuer']
+    assert query['secret'] == [b32encode(user.secret).decode('ASCII')]
+    assert query['digits'] == [str(user.key_length)]
