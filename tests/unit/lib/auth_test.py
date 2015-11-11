@@ -1,9 +1,56 @@
 # -*- coding: utf-8 -*-
 import os
+import time
 
 import pytest
 
 from adjure.lib import auth
+
+
+def test_provision_user():
+    user_id = 10
+    auth.provision_user(user_id)
+
+    auth_user = auth.load_user(user_id)
+    assert auth_user.user_id == 10
+    assert len(auth_user.secret) == auth.SECRET_KEY_BYTES
+    assert auth_user.key_length == 6
+
+
+def test_provision_user_alternate_key_length():
+    user_id = 11
+    auth.provision_user(user_id, key_length=8)
+
+    auth_user = auth.load_user(user_id)
+    assert auth_user.key_length == 8
+
+
+def test_unsupported_key_length():
+    with pytest.raises(auth.UserCreationException):
+        auth.provision_user(1, key_length=10)
+
+
+def test_user_exists():
+    user_id = 12
+    auth.provision_user(user_id)
+    with pytest.raises(auth.UserCreationException):
+        auth.provision_user(user_id)
+
+
+def test_authorize_user():
+    user_id = 13
+    user = auth.provision_user(user_id)
+
+    totp = auth.get_totp(user.secret, user.key_length, 30)
+    value = totp.generate(time.time())
+
+    assert auth.authorize_user(user_id, value)
+
+
+def test_authorize_user_not_found():
+    user_id = 14
+    with pytest.raises(auth.ValidationException):
+        auth.authorize_user(user_id, 'foo')
 
 
 def test_sliding_window():

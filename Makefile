@@ -14,7 +14,6 @@ venv:
 test:
 	tox
 
-
 .PHONY: clean
 clean:
 	rm -rf venv

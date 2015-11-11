@@ -13,7 +13,7 @@ from adjure.models.base import session
 from adjure.models.auth_user import AuthUser
 
 
-# Google authenticator and similar apps REQUIRE SHA1 + 6 length keys
+# Google authenticator and many similar apps REQUIRE SHA1 + 6 length keys
 # It's easy for the service to support other things but apps don't. :(
 SECRET_KEY_BYTES = 20
 SUPPORTED_KEY_LENGTHS = (6, 8)
@@ -70,7 +70,7 @@ def authorize_user(user_id, value):
     if not user:
         raise ValidationException('{} is not a known user.'.format(user_id))
 
-    totp_verify(
+    return totp_verify(
         user.secret,
         user.key_length,
         value,
