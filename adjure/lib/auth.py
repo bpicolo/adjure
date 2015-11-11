@@ -13,7 +13,10 @@ from adjure.models.base import session
 from adjure.models.auth_user import AuthUser
 
 
+# Google authenticator and similar apps REQUIRE SHA1 + 6 length keys
+# It's easy for the service to support other things but apps don't. :(
 SECRET_KEY_BYTES = 20
+SUPPORTED_KEY_LENGTHS = (6, 8)
 
 
 class ValidationException(ValueError):
@@ -29,12 +32,19 @@ def load_user(user_id):
 
 
 def provision_user(user_id, key_length=None):
+    """Provision a totp user for the given user_id
+    :param user_id: int
+    :param key_length: int in SUPPORTED_KEY_LENGTHS
+    """
     config = staticconf.NamespaceReaders('adjure')
     if key_length is None:
-        key_length = config.read('auth.default_key_length')
+        key_length = config.read('auth.key_length', default=6)
 
-    if not 6 == key_length:
-        raise UserCreationException('{} is not a valid key_length. Must be 6 for now'.format(key_length))
+    if key_length not in SUPPORTED_KEY_LENGTHS:
+        raise UserCreationException('{} is not a valid key_length. Must be one of {}'.format(
+            key_length,
+            SUPPORTED_KEY_LENGTHS
+        ))
     if load_user(user_id):
         raise UserCreationException('User id {} already provisioned.'.format(user_id))
 
@@ -47,10 +57,10 @@ def provision_user(user_id, key_length=None):
     return auth_user
 
 
-def validate_user(user_id, value):
-    """
-    user_id: int
-    value: UTF8 encoded bytes
+def authorize_user(user_id, value):
+    """Authorize the user given a code entry.
+    :param user_id: int
+    :param value: ASCII encoded bytes
     """
     config = staticconf.NamespaceReaders('adjure')
     key_valid_duration = config.read_int('key_valid_duration', default=30)
@@ -71,6 +81,11 @@ def validate_user(user_id, value):
 
 
 def get_totp(secret, key_length, key_valid_duration):
+    """Get the cryptography TOTP handler
+    :param secret: bytes
+    :param key_length: int length of totp key
+    :param key_valid_duration: int duration each key is valid for
+    """
     return TOTP(
         secret,
         key_length,
@@ -86,6 +101,7 @@ def totp_verify(secret, key_length, value, current_time, key_valid_duration, sli
         key_length,
         key_valid_duration,
     )
+
     for window_time in sliding_time_window(
         current_time, key_valid_duration, sliding_windows,
     ):
@@ -96,7 +112,7 @@ def totp_verify(secret, key_length, value, current_time, key_valid_duration, sli
         else:
             return True
 
-    raise ValidationException('Value was invalid')
+    raise ValidationException('Invalid code was given.')
 
 
 def sliding_time_window(current_time, key_valid_duration, sliding_windows):

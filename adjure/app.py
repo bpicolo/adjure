@@ -6,6 +6,7 @@ import staticconf
 from flask import Flask
 from logstash_formatter import LogstashFormatterV1
 
+from adjure.models.base import bind_engine
 from adjure.routes.auth import auth_page
 
 
@@ -37,6 +38,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     config = register_app_config(args.config_path)
     setup_logging(config)
+    bind_database_engine(config)
 
     app = build_app()
     setup_logging(app, config)
