@@ -6,7 +6,7 @@ import staticconf
 from flask import Flask
 from logstash_formatter import LogstashFormatterV1
 
-from adjure.models.base import bind_engine
+from adjure.models.base import bind_database_engine
 from adjure.routes.auth import auth_page
 
 
