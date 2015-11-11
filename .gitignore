@@ -1,0 +1,10 @@
+/dist
+/venv
+.cache
+*.egg-info
+*.egg
+*.pyc
+.coverage
+*.swp
+*.tox
+config.yaml

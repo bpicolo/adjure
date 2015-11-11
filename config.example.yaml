@@ -1,0 +1,13 @@
+host: localhost
+port: 5000
+auth:
+    default_key_length: 6
+    key_valid_duration: 30
+    sliding_windows: 1
+database:
+    # Supports anything sqlalchemy supports. May need additional deps eg psycopg2
+    # for postgres
+    connection_string: sqlite:////tmp/test.db
+logging:
+    # Error logging
+    log_path: '/tmp/adjure.log'

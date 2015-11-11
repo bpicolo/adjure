@@ -1,0 +1,6 @@
+uwsgi:
+    socket: /tmp/uwsgi.sock
+    master: 1
+    workers: 4
+    wsgi-file: adjure/app.py
+    venv: venv
