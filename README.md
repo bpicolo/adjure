@@ -44,7 +44,10 @@ For specifics (for now), hit up the code. There isn't too much to it :)
 
 ### Generate a QR code image to scan with a user's 2FA app
 You should proxy directly to this from your application. (Return type is image/png)
+
 Issuer, username, and user_id are required fields
-Issuer: Typically, your business name
-Username: The username to show for the user in their 2FA app
+
+- Issuer: Typically, your business name
+- Username: The username to show for the user in their 2FA app
+
 `http://localhost:5000/user/qrcode?issuer=Adjure&username=Foobar&user_id=123`
