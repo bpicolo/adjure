@@ -19,6 +19,7 @@ setup(
     install_requires=[
         'cryptography',
         'flask',
+        'jsonschema',
         'logstash-formatter',
         'pillow',
         'qrcode',

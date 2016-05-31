@@ -111,8 +111,7 @@ def current_time():
     return math.floor(time.time())
 
 
-def get_auth_code_for_user(user_id):
-    user = load_user(user_id)
+def get_auth_code_for_user(user):
     totp = get_totp(
         user.secret,
         user.key_length,
