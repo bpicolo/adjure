@@ -5,13 +5,15 @@ Flask-SQLAlchemy==2.1
 idna==2.0
 itsdangerous==0.24
 Jinja2==2.8
+logstash-formatter==0.5.14
 MarkupSafe==0.23
+Pillow==3.2.0
+psycopg2==2.6.1
 pyasn1==0.1.9
 pycparser==2.14
 pyotp==2.0.1
 PyStaticConfiguration==0.9.0
 PyYAML==3.11
-logstash-formatter==0.5.14
 qrcode==5.1
 six==1.10.0
 SQLAlchemy==1.0.9

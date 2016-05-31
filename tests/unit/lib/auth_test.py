@@ -10,7 +10,7 @@ import pytest
 from adjure.lib import auth
 
 
-def test_provision_user():
+def test_default_provision_user():
     user_id = 10
     auth.provision_user(user_id)
 
@@ -18,6 +18,7 @@ def test_provision_user():
     assert auth_user.user_id == 10
     assert len(auth_user.secret) == auth.SECRET_KEY_BYTES
     assert auth_user.key_length == 6
+    assert auth_user.hash_algorithm == 'SHA256'
 
 
 def test_provision_user_alternate_key_length():
@@ -33,25 +34,37 @@ def test_unsupported_key_length():
         auth.provision_user(1, key_length=10)
 
 
-def test_user_exists():
+def test_provision_user_alternate_algorithm():
     user_id = 12
+    auth.provision_user(user_id, hash_algorithm='SHA1')
+    auth_user = auth.load_user(user_id)
+    assert auth_user.hash_algorithm == 'SHA1'
+
+
+def test_provision_user_unsupported_hash_algorithm():
+    with pytest.raises(auth.UserCreationException):
+        auth.provision_user(1, hash_algorithm='MD5')
+
+
+def test_user_exists():
+    user_id = 13
     auth.provision_user(user_id)
     with pytest.raises(auth.UserCreationException):
         auth.provision_user(user_id)
 
 
 def test_authorize_user():
-    user_id = 13
+    user_id = 14
     user = auth.provision_user(user_id)
 
-    totp = auth.get_totp(user.secret, user.key_length, 30)
-    value = totp.generate(time.time())
+    totp = auth.get_totp(user.secret, user.key_length, user.hash_algorithm, 30)
+    code_to_validate = totp.generate(time.time())
 
-    assert auth.authorize_user(user_id, value)
+    assert auth.authorize_user(user_id, code_to_validate)
 
 
 def test_authorize_user_not_found():
-    user_id = 14
+    user_id = 15
     with pytest.raises(auth.ValidationException):
         auth.authorize_user(user_id, 'foo')
 
@@ -69,41 +82,43 @@ def test_totp_verify():
     secret = os.urandom(20)
     key_length = 6
     current_time = 400
-    totp = auth.get_totp(secret, key_length, 30)
+    hash_algorithm = 'SHA256'
+    totp = auth.get_totp(secret, key_length, hash_algorithm, 30)
     value = totp.generate(current_time)
 
-    assert auth.totp_verify(secret, key_length, value, current_time, 30, 0)
-    assert auth.totp_verify(secret, key_length, value, current_time, 30, 1)
+    assert auth.totp_verify(secret, key_length, hash_algorithm, 30, value, current_time, 0)
+    assert auth.totp_verify(secret, key_length, hash_algorithm, 30, value, current_time, 1)
     with pytest.raises(auth.ValidationException):
-        auth.totp_verify(secret, key_length, value, current_time, 60, 0)
+        auth.totp_verify(secret, key_length, hash_algorithm, 60, value, current_time, 0)
     with pytest.raises(auth.ValidationException):
-        auth.totp_verify(secret, key_length, b'999999', current_time, 30, 0)
+        auth.totp_verify(secret, key_length, hash_algorithm, 30, b'999999', current_time, 0)
 
 
-def test_totp_verify_60_window():
+def test_totp_verify_60_second_window():
     secret = os.urandom(20)
     key_length = 6
     current_time = 400
-    totp = auth.get_totp(secret, key_length, 60)
+    hash_algorithm = 'SHA256'
+    totp = auth.get_totp(secret, key_length, hash_algorithm, 60)
 
     value = totp.generate(current_time)
-    previous_window = totp.generate(340)
-    next_window = totp.generate(460)
+    previous_window_value = totp.generate(340)
+    next_window_value = totp.generate(460)
 
-    assert auth.totp_verify(secret, key_length, value, current_time, 60, 0)
+    assert auth.totp_verify(secret, key_length, hash_algorithm, 60, value, current_time, 0)
     with pytest.raises(auth.ValidationException):
-        auth.totp_verify(secret, key_length, previous_window, current_time, 60, 0)
+        auth.totp_verify(secret, key_length, hash_algorithm, 60, previous_window_value, current_time, 0)
     with pytest.raises(auth.ValidationException):
-        auth.totp_verify(secret, key_length, next_window, current_time, 60, 0)
+        auth.totp_verify(secret, key_length, hash_algorithm, 60, next_window_value, current_time, 0)
 
-    assert auth.totp_verify(secret, key_length, value, current_time, 60, 1)
-    assert auth.totp_verify(secret, key_length, previous_window, current_time, 60, 1)
-    assert auth.totp_verify(secret, key_length, next_window, current_time, 60, 1)
+    assert auth.totp_verify(secret, key_length, hash_algorithm, 60, value, current_time, 1)
+    assert auth.totp_verify(secret, key_length, hash_algorithm, 60, previous_window_value, current_time, 1)
+    assert auth.totp_verify(secret, key_length, hash_algorithm, 60, next_window_value, current_time, 1)
 
     with pytest.raises(auth.ValidationException):
-        auth.totp_verify(secret, key_length, b'999999', current_time, 60, 0)
+        auth.totp_verify(secret, key_length, hash_algorithm, 60, b'999999', current_time, 0)
     with pytest.raises(auth.ValidationException):
-        auth.totp_verify(secret, key_length, value, current_time, 30, 0)
+        auth.totp_verify(secret, key_length, hash_algorithm, 30, value, current_time, 0)
 
 
 def test_auth_uri():
@@ -119,7 +134,7 @@ def test_auth_uri():
     assert auth_uri.path == '/someissuer:ausername%40example.org'
 
     query = parse_qs(auth_uri.query)
-    assert query['algorithm'] == ['SHA1']
+    assert query['algorithm'] == ['SHA256']
     assert query['period'] == [str(user.key_valid_duration)]
     assert query['issuer'] == ['someissuer']
     assert query['secret'] == [b32encode(user.secret).decode('ASCII')]

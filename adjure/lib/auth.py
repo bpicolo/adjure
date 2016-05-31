@@ -6,6 +6,8 @@ import time
 import staticconf
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.hashes import SHA1
+from cryptography.hazmat.primitives.hashes import SHA256
+from cryptography.hazmat.primitives.hashes import SHA512
 from cryptography.hazmat.primitives.twofactor import InvalidToken
 from cryptography.hazmat.primitives.twofactor.totp import TOTP
 
@@ -17,6 +19,11 @@ from adjure.models.auth_user import AuthUser
 # It's easy for the service to support other things but apps don't. :(
 SECRET_KEY_BYTES = 20
 SUPPORTED_KEY_LENGTHS = (6, 8)
+TOTP_HASH_ALGORITHMS = {
+    'SHA1': SHA1,
+    'SHA256': SHA256,
+    'SHA512': SHA512
+}
 
 
 class ValidationException(ValueError):
@@ -31,22 +38,35 @@ def load_user(user_id):
     return session.query(AuthUser).filter(AuthUser.user_id == user_id).first()
 
 
-def provision_user(user_id, key_length=None, key_valid_duration=None):
-    """Provision a totp user for the given user_id
-    :param user_id: int
-    :param key_length: int in SUPPORTED_KEY_LENGTHS
-    """
-    config = staticconf.NamespaceReaders('adjure')
-    if key_length is None:
-        key_length = config.read('auth.key_length', default=6)
-    if key_valid_duration is None:
-        key_valid_duration = config.read('auth.key_valid_duration', default=30)
-
+def validate_key_length(key_length):
     if key_length not in SUPPORTED_KEY_LENGTHS:
         raise UserCreationException('{} is not a valid key_length. Must be one of {}'.format(
             key_length,
             SUPPORTED_KEY_LENGTHS
         ))
+
+
+def validate_hash_algorithm(hash_algorithm):
+    if hash_algorithm not in TOTP_HASH_ALGORITHMS:
+        raise UserCreationException('{} is not a valid TOTP hash algorithm. Must be one of {}'.format(
+            hash_algorithm,
+            list(TOTP_HASH_ALGORITHMS.values())
+        ))
+
+
+def provision_user(user_id, key_length=None, key_valid_duration=None, hash_algorithm=None):
+    """Provision a totp user for the given user_id
+    :param user_id: int
+    :param key_length: int in SUPPORTED_KEY_LENGTHS
+    """
+    config = staticconf.NamespaceReaders('adjure')
+    key_length = key_length or config.read('auth.key_length', default=6)
+    key_valid_duration = key_valid_duration or config.read('auth.key_valid_duration', default=30)
+    hash_algorithm = hash_algorithm or config.read('auth.hash_algorithm', default='SHA256')
+
+    validate_key_length(key_length)
+    validate_hash_algorithm(hash_algorithm)
+
     if load_user(user_id):
         raise UserCreationException('User id {} already provisioned.'.format(user_id))
 
@@ -54,7 +74,8 @@ def provision_user(user_id, key_length=None, key_valid_duration=None):
         user_id=user_id,
         secret=os.urandom(SECRET_KEY_BYTES),
         key_length=key_length,
-        key_valid_duration=key_valid_duration
+        key_valid_duration=key_valid_duration,
+        hash_algorithm=hash_algorithm
     )
 
     session.add(auth_user)
@@ -63,10 +84,10 @@ def provision_user(user_id, key_length=None, key_valid_duration=None):
     return auth_user
 
 
-def authorize_user(user_id, value):
+def authorize_user(user_id, code_to_verify):
     """Authorize the user given a code entry.
     :param user_id: int
-    :param value: ASCII encoded bytes
+    :param code_to_verify: ASCII encoded bytes
     """
     config = staticconf.NamespaceReaders('adjure')
     sliding_windows = config.read_int('sliding_windows', default=1)
@@ -78,14 +99,31 @@ def authorize_user(user_id, value):
     return totp_verify(
         user.secret,
         user.key_length,
-        value,
-        math.floor(time.time()),
+        user.hash_algorithm,
         user.key_valid_duration,
+        code_to_verify,
+        current_time(),
         sliding_windows,
     )
 
 
-def get_totp(secret, key_length, key_valid_duration):
+def current_time():
+    return math.floor(time.time())
+
+
+def get_auth_code_for_user(user_id):
+    user = load_user(user_id)
+    totp = get_totp(
+        user.secret,
+        user.key_length,
+        user.hash_algorithm,
+        user.key_valid_duration
+    )
+
+    return totp.generate(current_time()).decode('ASCII')
+
+
+def get_totp(secret, key_length, hash_algorithm, key_valid_duration):
     """Get the cryptography TOTP handler
     :param secret: bytes
     :param key_length: int length of totp key
@@ -94,16 +132,37 @@ def get_totp(secret, key_length, key_valid_duration):
     return TOTP(
         secret,
         key_length,
-        SHA1(),
+        TOTP_HASH_ALGORITHMS[hash_algorithm](),
         key_valid_duration,
         backend=default_backend(),
     )
 
 
-def totp_verify(secret, key_length, value, current_time, key_valid_duration, sliding_windows):
+def totp_verify(
+    secret,
+    key_length,
+    hash_algorithm,
+    key_valid_duration,
+    code_to_verify,
+    current_time,
+    sliding_windows
+):
+    """
+    Do validation of a TOTP code given all the relevant parameters that can
+    go into it
+    :param secret: The user's TOTP secret
+    :type secret: str
+    :param key_length: Length of TOTP key
+    :type key_length: int
+    :param hash_algorithm: One of TOTP_HASH_ALGORITHMS
+    :param code_to_verify: The code submitted by the user
+    :param current_time: When to consider 'now' as a unix timestamp
+    :param sliding_windows: number of time windows on each side to consider
+    """
     totp = get_totp(
         secret,
         key_length,
+        hash_algorithm,
         key_valid_duration,
     )
 
@@ -111,7 +170,7 @@ def totp_verify(secret, key_length, value, current_time, key_valid_duration, sli
         current_time, key_valid_duration, sliding_windows,
     ):
         try:
-            totp.verify(value, window_time)
+            totp.verify(code_to_verify, window_time)
         except InvalidToken:
             pass
         else:
@@ -139,6 +198,7 @@ def user_auth_uri(user_id, username, issuer):
     totp = get_totp(
         user.secret,
         user.key_length,
+        user.hash_algorithm,
         user.key_valid_duration,
     )
 
