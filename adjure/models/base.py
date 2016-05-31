@@ -15,4 +15,5 @@ def bind_database_engine(config):
         convert_unicode=True,
     )
     session.configure(bind=engine)
+    Base.metadata.create_all(engine)
     return engine

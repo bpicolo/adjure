@@ -31,14 +31,12 @@ def build_app():
     return app
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Run the adjure server')
-    parser.add_argument('--config', dest='config_path', default='config.example.yaml')
+parser = argparse.ArgumentParser(description='Run the adjure server')
+parser.add_argument('--config', dest='config_path', default='config.example.yaml')
 
-    args = parser.parse_args()
-    config = register_app_config(args.config_path)
-    setup_logging(config)
-    bind_database_engine(config)
+args = parser.parse_args()
+config = register_app_config(args.config_path)
+bind_database_engine(config)
 
-    app = build_app()
-    setup_logging(app, config)
+application = build_app()
+setup_logging(application, config)

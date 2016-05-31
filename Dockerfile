@@ -1,6 +1,8 @@
-FROM python3.5.1
+FROM python:3.5.1
 
 ADD . /src
 WORKDIR /src
 
-CMD make run
+RUN pip install -r requirements.txt
+
+CMD make run-in-docker

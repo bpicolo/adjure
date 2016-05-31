@@ -102,9 +102,25 @@ def authorize_user(user_id, code_to_verify):
         user.hash_algorithm,
         user.key_valid_duration,
         code_to_verify,
-        math.floor(time.time()),
+        current_time(),
         sliding_windows,
     )
+
+
+def current_time():
+    return math.floor(time.time())
+
+
+def get_auth_code_for_user(user_id):
+    user = load_user(user_id)
+    totp = get_totp(
+        user.secret,
+        user.key_length,
+        user.hash_algorithm,
+        user.key_valid_duration
+    )
+
+    return totp.generate(current_time()).decode('ASCII')
 
 
 def get_totp(secret, key_length, hash_algorithm, key_valid_duration):

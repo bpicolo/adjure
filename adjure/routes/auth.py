@@ -6,6 +6,7 @@ from flask import Blueprint
 from flask import jsonify
 from flask import send_file
 from flask import request
+from flask import Response
 
 from adjure.lib import auth
 
@@ -19,28 +20,38 @@ def user_provision():
     try:
         user = auth.provision_user(**data)
     except auth.UserCreationException as e:
-        return jsonify(success=False, message=e.args[0])
-    except Exception as e:
-        return jsonify(success=False, message='An unknown error occurred')
+        return jsonify(error_message=e.args[0], error_code='INVALID_PARAMS'), 400
 
-    return jsonify(success=True, user_id=user.user_id)
+    return jsonify(user_id=user.user_id)
+
+
+@auth_page.route('/user/auth_code', methods=['GET'])
+def user_auth_code():
+    return jsonify({
+        'code': auth.get_auth_code_for_user(request.args['user_id'])
+    })
 
 
 @auth_page.route('/user/authenticate', methods=['POST'])
 def user_authenticate():
     data = request.get_json(force=True)
 
-    for field in ('user_id', 'value'):
+    for field in ('user_id', 'auth_code'):
         if field not in data:
-            return jsonify(success=False, message='{} is required'.format(field))
+            return jsonify(
+                error_message='{} is required'.format(field),
+                error_code='INVALID_PARAMS'
+            ), 400
 
-    data['value'] = data['value'].encode('ASCII')
     try:
-        auth.authorize_user(**data)
+        auth.authorize_user(data['user_id'], data['auth_code'].encode('ASCII'))
     except auth.ValidationException as e:
-        return jsonify(success=False, message=e.args[0])
+        return jsonify(
+            error_message=e.args[0],
+            error_code='VALIDATION_FAILURE'
+        ), 400
 
-    return jsonify(success=True)
+    return jsonify({}), 200
 
 
 @auth_page.route('/user/qrcode', methods=['GET'])
@@ -66,4 +77,4 @@ def user_qrcode():
     image.save(data)
 
     data.seek(0)
-    return send_file(data, mimetype='image/png')
+    return Response(data, mimetype='image/png')
