@@ -1,11 +1,12 @@
 host: localhost
 port: 5000
 auth:
-    # Must be 6 or 8 for valid keys, HOWEVER google authenticator, etc
+    # Must be 6 or 8 for valid keys, However many apps
     # only support 6 length keys =/
     key_length: 6
     key_valid_duration: 30
     sliding_windows: 1
+    hash_algorithm: SHA256
 database:
     # Supports anything sqlalchemy supports. May need additional deps eg psycopg2
     # for postgres

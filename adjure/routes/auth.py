@@ -21,7 +21,7 @@ def user_provision():
     except auth.UserCreationException as e:
         return jsonify(success=False, message=e.args[0])
     except Exception as e:
-        return jsonify(success=False, message="An error occurred")
+        return jsonify(success=False, message='An unknown error occurred')
 
     return jsonify(success=True, user_id=user.user_id)
 
