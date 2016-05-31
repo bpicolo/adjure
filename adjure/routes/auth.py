@@ -35,7 +35,6 @@ def user_authenticate():
             return jsonify(success=False, message='{} is required'.format(field))
 
     data['value'] = data['value'].encode('ASCII')
-
     try:
         auth.authorize_user(**data)
     except auth.ValidationException as e:

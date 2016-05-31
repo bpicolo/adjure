@@ -131,6 +131,18 @@ def totp_verify(
     current_time,
     sliding_windows
 ):
+    """
+    Do validation of a TOTP code given all the relevant parameters that can
+    go into it
+    :param secret: The user's TOTP secret
+    :type secret: str
+    :param key_length: Length of TOTP key
+    :type key_length: int
+    :param hash_algorithm: One of TOTP_HASH_ALGORITHMS
+    :param code_to_verify: The code submitted by the user
+    :param current_time: When to consider 'now' as a unix timestamp
+    :param sliding_windows: number of time windows on each side to consider
+    """
     totp = get_totp(
         secret,
         key_length,
