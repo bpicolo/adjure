@@ -10,6 +10,7 @@ from logstash_formatter import LogstashFormatterV1
 
 from adjure.models.base import bind_database_engine
 from adjure.routes.auth import auth_page
+from adjure.routes.healthcheck import healthcheck_page
 
 
 DB_HOST_ENV_VAR = 'ADJURE_DB_HOST'
@@ -29,6 +30,7 @@ def setup_logging(app, config):
 def build_app():
     app = Flask(__name__)
     app.register_blueprint(auth_page)
+    app.register_blueprint(healthcheck_page)
     return app
 
 

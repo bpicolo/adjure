@@ -8,7 +8,7 @@ from adjure.models.base import Base
 
 
 class AuthUser(Base):
-    __tablename__ = 'auth_user'
+    __tablename__ = 'adjure_auth_user'
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, unique=True, nullable=False)

@@ -3,7 +3,8 @@
 .cache
 *.egg-info
 *.egg
-*.pyc
+*.py[co]
 .coverage
 *.swp
 *.tox
+__pycache__

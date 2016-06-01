@@ -1,10 +1,10 @@
-.PHONY: run-in-docker
-run-in-docker:
-	uwsgi uwsgi-production.ini --pyargv "--config config.yaml"
-
 .PHONY: run
 run: venv
 	docker-compose up adjure
+
+.PHONY: run-production
+run-production:
+	./venv/bin/uwsgi uwsgi-production.ini --pyargv "--config config.yaml"
 
 .PHONY: run-dev
 run-dev: venv

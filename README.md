@@ -3,12 +3,10 @@
 Adjure is a simple microservice for Two-Factor authentication. It provides endpoints for user provisioning, authorization, and generating relevant QR-codes to scan with apps
 like Google Authenticator.
 
-For specifics, hit up the code. There isn't too much to it :)
-
 ## Using adjure
 ### Running Adjure
 Docker is the easiest way to run Adjure, though it's also just a standard
-uWSGI application. The default config.yaml and also production uwsgi configuration
+uWSGI application. The default config.yaml and also uWSGI configurations
 are a reasonable configuration set for typical use.
 
 Running in Docker:
@@ -16,6 +14,9 @@ Running in Docker:
 docker-compose build adjure
 ADJURE_DB_HOST=sqlite:////tmp/adjure.data docker-compose up adjure
 ```
+
+On first startup, adjure will create an `adjure_auth_user` table in the given
+database.
 
 ### Provision a new user
 ```
@@ -49,7 +50,6 @@ ADJURE_DB_HOST=sqlite:////tmp/adjure.data docker-compose up adjure
 >>> authenticate_response.json()
 {}
 ```
-
 
 ### Generate a QR code image to scan with a user's 2FA app
 You should proxy directly to this from your application. (Return type is image/png)
