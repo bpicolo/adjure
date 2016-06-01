@@ -14,6 +14,7 @@ Running in Docker:
 docker-compose build adjure
 ADJURE_DB_HOST=sqlite:////tmp/adjure.data docker-compose up adjure
 ```
+Any database supported by SQLAlchemy should be functional.
 
 On first startup, adjure will create an `adjure_auth_user` table in the given
 database.
