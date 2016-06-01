@@ -7,4 +7,3 @@
 .coverage
 *.swp
 *.tox
-config.yaml

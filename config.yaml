@@ -1,0 +1,7 @@
+auth:
+    # Must be 6 or 8 for valid keys, However many apps
+    # only support 6 length keys =/
+    key_length: 6
+    key_valid_duration: 30
+    sliding_windows: 1
+    hash_algorithm: SHA256
