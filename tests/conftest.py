@@ -10,13 +10,12 @@ from adjure.models import base
 def mock_configuration():
     with staticconf.testing.MockConfiguration(
         {
-            'key_valid_duration': 30,
-            'database': {
-                'connection_string': 'sqlite://'
-            }
+            'auth': {
+                'key_valid_duration': 30,
+            },
         },
         namespace='adjure',
     ):
-        engine = base.bind_database_engine(staticconf.NamespaceReaders('adjure'))
+        engine = base.bind_database_engine('sqlite://')
         base.Base.metadata.create_all(engine)
         yield

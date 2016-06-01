@@ -74,7 +74,7 @@ def user_auth_code():
     user = auth.load_user(request.args['user_id'])
     if not user:
         return jsonify(
-            error_message='User {} has not been provisioned',
+            error_message='User {} has not been provisioned'.format(request.args['user_id']),
             error_code='USER_NOT_FOUND'
         ), 400
 

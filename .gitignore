@@ -3,8 +3,8 @@
 .cache
 *.egg-info
 *.egg
-*.pyc
+*.py[co]
 .coverage
 *.swp
 *.tox
-config.yaml
+__pycache__
