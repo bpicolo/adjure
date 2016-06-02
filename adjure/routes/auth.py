@@ -200,7 +200,7 @@ def user_regenerate_recovery_codes():
         return user_not_provisioned_response(data['user_id'])
 
     auth_user = auth.regenerate_user_recovery_codes(auth_user.user_id)
-    return jsonify()
+    return format_auth_user_response(auth_user)
 
 
 USER_QRCODE_SCHEMA = {
