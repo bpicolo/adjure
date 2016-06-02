@@ -13,7 +13,7 @@ class RecoveryCode(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(
-        Integer,
+        String(128),
         ForeignKey('adjure_auth_user.user_id'),
         nullable=False,
     )

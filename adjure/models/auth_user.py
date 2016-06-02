@@ -13,7 +13,7 @@ class AuthUser(Base):
     __tablename__ = 'adjure_auth_user'
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, unique=True, nullable=False)
+    user_id = Column(String(128), unique=True, nullable=False)
     secret = Column(Binary(32), nullable=False)
     key_length = Column(Integer, nullable=False)
     key_valid_duration = Column(Integer, nullable=False)
