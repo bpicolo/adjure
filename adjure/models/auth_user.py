@@ -3,8 +3,10 @@ from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.types import Binary
+from sqlalchemy.orm import relationship
 
 from adjure.models.base import Base
+from adjure.models.recovery_code import RecoveryCode
 
 
 class AuthUser(Base):
@@ -16,3 +18,5 @@ class AuthUser(Base):
     key_length = Column(Integer, nullable=False)
     key_valid_duration = Column(Integer, nullable=False)
     hash_algorithm = Column(String(8), nullable=False)
+
+    recovery_codes = relationship(RecoveryCode)
