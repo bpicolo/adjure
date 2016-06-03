@@ -2,6 +2,7 @@
 import math
 import os
 import time
+import uuid
 
 import staticconf
 from cryptography.hazmat.backends import default_backend
@@ -13,6 +14,7 @@ from cryptography.hazmat.primitives.twofactor.totp import TOTP
 
 from adjure.models.base import session
 from adjure.models.auth_user import AuthUser
+from adjure.models.recovery_code import RecoveryCode
 
 
 # Google authenticator and many similar apps REQUIRE SHA1 + 6 length keys
@@ -24,6 +26,7 @@ TOTP_HASH_ALGORITHMS = {
     'SHA256': SHA256,
     'SHA512': SHA512
 }
+RECOVERY_CODE_COUNT = 10
 
 
 class ValidationException(ValueError):
@@ -32,6 +35,10 @@ class ValidationException(ValueError):
 
 class UserCreationException(ValueError):
     """Raised when invalid user is created"""
+
+
+class RecoveryCodeConsumptionError(ValueError):
+    """Raised when trying to consume a recovery code that cannot be consumed"""
 
 
 def load_user(user_id):
@@ -80,6 +87,7 @@ def provision_user(user_id, key_length=None, key_valid_duration=None, hash_algor
 
     session.add(auth_user)
     session.commit()
+    generate_recovery_codes_for_user(auth_user)
 
     return auth_user
 
@@ -202,3 +210,40 @@ def user_auth_uri(user_id, username, issuer):
     )
 
     return totp.get_provisioning_uri(username, issuer)
+
+
+def generate_recovery_codes_for_user(user, count=RECOVERY_CODE_COUNT):
+    user.recovery_codes = [
+        RecoveryCode(code=str(uuid.uuid4()).replace('-', ''))
+        for _ in range(count)
+    ]
+    session.flush()
+    return user
+
+
+def clear_current_recovery_codes(user_id):
+    return session.query(RecoveryCode).filter(
+        RecoveryCode.user_id == user_id
+    ).delete()
+
+
+def regenerate_user_recovery_codes(user_id):
+    clear_current_recovery_codes(user_id)
+    return generate_recovery_codes_for_user(load_user(user_id))
+
+
+def consume_recovery_code(user_id, recovery_code):
+    code = session.query(RecoveryCode).filter(
+        RecoveryCode.user_id == user_id,
+        RecoveryCode.code == recovery_code,
+        RecoveryCode.used.is_(False)
+    ).first()
+
+    if not code:
+        raise RecoveryCodeConsumptionError(
+            'That recovery code has already been used, '
+            'or doesn\'t exist for this user'
+        )
+
+    code.used = True
+    session.flush()
