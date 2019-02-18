@@ -1,6 +1,6 @@
 cffi==1.3.0
 cryptography==1.1
-Flask==0.10.1
+Flask==0.12.3
 Flask-SQLAlchemy==2.1
 idna==2.0
 itsdangerous==0.24
